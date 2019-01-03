@@ -1,8 +1,9 @@
 #!/usr/local/bin/bash
 
-finalResult="AccountName AccountRG DBName CollectionName SpecifiedThroughput\n"
+# Define the column headers to be used in the final output
+finalResult="AccountName AccountRG DBName CollectionName OfferThroughput SpecifiedThroughput\n"
 
-# get all of the account names (need to set the sub first!!! TODO)
+# Obtain list of all accounts in the subscription
 cosmosAccounts=$(az cosmosdb list --query '[].{name:name, resourceGroup:resourceGroup}' --output tsv)
 #printf '%s\n' "$cosmosAccounts" |
 while read -r accountName accountRG
@@ -22,22 +23,28 @@ do
                         #printf '%s\n' "$collectionList" |
                         while read -r collectionName
                         do
-                                echo "----Collection: $collectionName"
-                                throughput=$(az cosmosdb collection show -n $accountName -g $accountRG -d $dbName -c $collectionName --query '{offerThroughput:offer.content.offerThroughput, userSpecifiedThroughput:offer.content.userSpecifiedThroughput}' --output tsv)
-                                #printf '%s\n' "$throughput" |
-                                while read -r offerThroughput specifiedThroughput
-                                do
-                                        echo "------Offer: $offerThroughput"
-                                        echo "------Specified: $specifiedThroughput"
-                                        finalResult+="$accountName $accountRG $dbName $collectionName $specifiedThroughput\n"
-                                done <<< $throughput
-                                echo ""
-                         done <<< $collectionList
+                                if [ -z "$collectionName" ]
+                                then
+                                        $a
+                                else
+                                        echo "----Collection: $collectionName"
+                                        throughput=$(az cosmosdb collection show -n $accountName -g $accountRG -d $dbName -c $collectionName --query '{offerThroughput:offer.content.offerThroughput, userSpecifiedThroughput:offer.content.userSpecifiedThroughput}' --output tsv)
+                                        #printf '%s\n' "$throughput" |
+                                        while read -r offerThroughput specifiedThroughput
+                                        do
+                                                echo "------Offer: $offerThroughput"
+                                                echo "------Specified: $specifiedThroughput"
+                                                finalResult+="$accountName $accountRG $dbName $collectionName $offerThroughput $specifiedThroughput\n"
+                                        done <<< $throughput
+                                        echo ""
+                                fi
+                        done <<< $collectionList
                 fi
         done <<< $accountDBs
         echo ""
 done <<< $cosmosAccounts
 #echo "*************$finalResult******************"
+# Print the final result
 echo ""
 echo ""
 echo -e $finalResult | column -t |sort -k5 -n
